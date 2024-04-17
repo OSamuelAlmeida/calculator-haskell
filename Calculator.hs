@@ -2,51 +2,41 @@ import System.IO
 
 data Token = 
     Number Float
-    | Add (Float -> Float -> Float)
-    | Sub (Float -> Float -> Float)
-    | Mul (Float -> Float -> Float)
-    | Div (Float -> Float -> Float)
-    | Pow (Float -> Float -> Float)
-    | End Float
+    | Operator Char
+    | End
 
 tokenToString :: Token -> String
 tokenToString (Number n) = show n
-tokenToString (Add _) = "+"
-tokenToString (Sub _) = "-"
-tokenToString (Mul _) = "*"
-tokenToString (Div _) = "/"
-tokenToString (Pow _) = "^"
-tokenToString (End n) = show n
+tokenToString (Operator op) = show op
+tokenToString End = "End"
 
 tokenize :: String -> [String]
 tokenize = words
 
 parseToken :: String -> Token
-parseToken "+" = Add (+)
-parseToken "-" = Sub (-)
-parseToken "*" = Mul (*)
-parseToken "/" = Div (/)
-parseToken "^" = Pow (**)
-parseToken "\0" = End 0
+parseToken "+" = Operator '+'
+parseToken "-" = Operator '-'
+parseToken "*" = Operator '*'
+parseToken "/" = Operator '/'
+parseToken "^" = Operator '^'
 parseToken number = Number (read number)
 
 parseTokens :: [String] -> [Token]
 parseTokens = map parseToken
 
-applyOperation :: [Token] -> Float
-applyOperation (Number x:t2:Number y:ts) = case t2 of
-    Add f -> f x y
-    Sub f -> f x y
-    Mul f -> f x y
-    Div f -> f x y
-    Pow f -> f x y
-    _ -> error "Invalid operation"
+applyOperation :: Float -> Char -> Float -> Float
+applyOperation x '+' y = x + y
+applyOperation x '-' y = x - y
+applyOperation x '*' y = x * y
+applyOperation x '/' y = if y == 0 then error "Divide by zero" else x / y
+applyOperation x '^' y = x ** y
+applyOperation _ op _ = error ("Unsupported operator: " ++ [op])
 
-evaluateLine :: [Token] -> Float
-evaluateLine (t1:t2:t3:ts) = evaluateLine (Number (applyOperation (t1:t2:t3:ts)) : ts)
-evaluateLine (t1:t2:ts) = applyOperation (t1:t2:ts)
-evaluateLine [End n] = n
-evaluateLine [Number n1] = n1
+evaluate :: [Token] -> Float
+evaluate [Number n] = n
+evaluate (Number x : Operator op : Number y : ts) =
+    evaluate (Number (applyOperation x op y) : ts)
+evaluate _ = error "Invalid expression"
 
 main :: IO ()
 main = do
@@ -56,5 +46,4 @@ main = do
 
     let tokenizedExpression = tokenize expression
     let parsedTokens = parseTokens tokenizedExpression
-    print (evaluateLine parsedTokens)
-
+    print $ evaluate parsedTokens
